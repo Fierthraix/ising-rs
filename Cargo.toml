@@ -1,0 +1,9 @@
+[package]
+name = "ising"
+version = "0.1.0"
+authors = ["Lucas Rooyakkers <lucas.rooyakkers@protonmail.com>"]
+edition = "2018"
+
+[dependencies]
+rand = "0.6.5"
+lazy_static = "1.3"
