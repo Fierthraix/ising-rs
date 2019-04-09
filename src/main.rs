@@ -9,7 +9,7 @@ use std::path::Path;
 macro_rules! save {
     ($m:expr, $opt:expr, $i:expr) => {
         if $opt.png {
-            $m.save(&format!("{}_{}-{}.png", $opt.base, $opt.temp, $i))
+            $m.save(&format!("{}_{}-{:025}.png", $opt.base, $opt.temp, $i))
                 .expect("Unable to save image");
         } else {
             println!("{:?}", $m);
@@ -22,7 +22,9 @@ fn main() {
     let mut rng = rand::thread_rng();
     let mut matrix = Matrix::<Spin>::initialize(opt.size);
 
-    save!(matrix, opt, 0);
+    if opt.verbose >= 1 {
+        save!(matrix, opt, 0);
+    }
 
     // Run the simulation about `iters` times per dipole (0 -> iters * size^2)
     for iter in 1..opt.iters * opt.size.pow(2) {
@@ -41,7 +43,9 @@ fn main() {
             }
         }
         // Print every iteration if the user asks
-        if opt.verbose && iter % opt.size.pow(2) == 0 {
+        if opt.verbose == 1 && iter % opt.size.pow(2) == 0 {
+            save!(matrix, opt, iter);
+        } else if opt.verbose >= 2 {
             save!(matrix, opt, iter);
         }
     }
@@ -186,8 +190,8 @@ struct Opt {
     iters: usize,
 
     /// print all of the in-between states
-    #[structopt(short = "v", long = "verbose")]
-    verbose: bool,
+    #[structopt(short = "v", long = "verbose", parse(from_occurrences))]
+    verbose: usize,
 
     /// save as a png image
     #[structopt(short = "p", long = "png")]
