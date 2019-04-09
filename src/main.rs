@@ -1,51 +1,99 @@
+use png::HasParameters;
 use rand::Rng;
+use structopt::StructOpt;
 
-const SIZE: usize = 10;
-const T: f64 = 2.5;
+use std::fs::File;
+use std::io::BufWriter;
+use std::path::Path;
 
-fn main(){
-    let mut matrix = Matrix::<Spin>::initialize(SIZE);
-    let size = matrix.1;
+macro_rules! save {
+    ($m:expr, $opt:expr, $i:expr) => {
+        if $opt.png {
+            $m.save(&format!("{}_{}-{}.png", $opt.base, $opt.temp, $i))
+                .expect("Unable to save image");
+        } else {
+            println!("{:?}", $m);
+        }
+    };
+}
 
+fn main() {
+    let opt = Opt::from_args();
     let mut rng = rand::thread_rng();
+    let mut matrix = Matrix::<Spin>::initialize(opt.size);
 
-    // Run the simulation about 100x per dipole
-    for i in 0..100*SIZE*SIZE {
+    save!(matrix, opt, 0);
+
+    // Run the simulation about `iters` times per dipole (0 -> iters * size^2)
+    for i in 1..opt.iters * opt.size.pow(2) {
         // Select a random row and column
-        let i = rng.gen_range::<usize>(0, size);
-        let j = rng.gen_range::<usize>(0, size);
+        let i = rng.gen_range(0, opt.size);
+        let j = rng.gen_range(0, opt.size);
 
-        // Computer deltaU
-
+        let energy_diff = matrix.delta_u(i, j);
         // If flipping reduces energy then do it
-        if deltaU(i, j, Ediff) {
-            // Flip the sping
+        if energy_diff <= 0. {
+            matrix.0[i][j].flip()
         } else {
             // Use Bolztmann factor to give probability of flipping
-            //if rand < exp(-Ediff/T) { Flip It }
-
+            if rng.gen::<f64>() < (-energy_diff / opt.temp).exp() {
+                matrix.0[i][j].flip()
+            }
         }
+        // Print every iteration if the user asks
+        if opt.verbose {
+            save!(matrix, opt, i);
+        }
+    }
+    save!(matrix, opt, opt.iters * opt.size.pow(2));
+}
 
+#[derive(Clone, Copy)]
+enum Spin {
+    Up,
+    Down,
+}
+
+impl Spin {
+    fn flip(&mut self) {
+        match self {
+            Spin::Up => *self = Spin::Down,
+            Spin::Down => *self = Spin::Up,
+        }
     }
 }
 
-#[derive(Clone, Copy, Debug)]
-enum Spin {
-    Up,
-    Down
+impl std::fmt::Debug for Spin {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let c = match self {
+            Spin::Up => "⬆",   // ⇧
+            Spin::Down => "⇩", // ⬇
+        };
+        write!(f, "{}", c)
+    }
 }
 
-impl std::ops::Mult for Spin {
-    //Up = +1
-    //Down = -1
+// Used to convert spins to numbers
+macro_rules! spin {
+    ($spin:expr) => {
+        match $spin {
+            Spin::Up => 1.0,
+            Spin::Down => -1.0,
+        }
+    };
 }
 
 struct Matrix<T>(Vec<Vec<T>>, usize);
 
-impl<T> Matrix<T> {
-
-    fn size(&self) -> usize {
-        self.0.iter().map(|row| row.len()).sum()
+impl<T: std::fmt::Debug> std::fmt::Debug for Matrix<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        for row in self.0.iter() {
+            for item in row.iter() {
+                write!(f, "{:?} ", item)?;
+            }
+            writeln!(f)?;
+        }
+        Ok(())
     }
 }
 
@@ -58,19 +106,94 @@ impl Matrix<Spin> {
 
         for row in matrix.0.iter_mut() {
             for _ in 0..size {
-                row.push(if rng.gen::<bool>() { Spin::Up } else { Spin::Down });
+                row.push(if rng.gen::<bool>() {
+                    Spin::Up
+                } else {
+                    Spin::Down
+                });
             }
         }
 
         matrix
     }
-    fn deltaU(&mut self, i: usize, j: usize) -> f64 {
+    /// Calculate the energy delta using wrapping grid math
+    fn delta_u(&self, i: usize, j: usize) -> f64 {
         let size = self.1;
-        let top = if i == 0 { self.0[size-1][j] } else { self.0[i-1][ j] };
-        let bot = if i == size-1 { self.0[0][ j] } else { self.0[i+1][ j] };
-        let left = if j == 1 {self.0[0][size-1]} else { self.0[i][j-1] };
-        let right = if j == size-1 { self.0[i][ 0] } else { self.0[i][ j+1] };
+        // All the if statements handle boundary conditions,
+        // the branch predictor should speed this up
+        let top = if i == 0 {
+            spin!(self.0[size - 1][j])
+        } else {
+            spin!(self.0[i - 1][j])
+        };
+        let bot = if i == size - 1 {
+            spin!(self.0[0][j])
+        } else {
+            spin!(self.0[i + 1][j])
+        };
+        let left = if j == 0 {
+            spin!(self.0[0][size - 1])
+        } else {
+            spin!(self.0[i][j - 1])
+        };
+        let right = if j == size - 1 {
+            spin!(self.0[i][0])
+        } else {
+            spin!(self.0[i][j + 1])
+        };
 
-        2*self.0[i][j]*(top+bot+left+right)
+        2. * spin!(self.0[i][j]) * (top + bot + left + right)
     }
+    /// Save the matrix as a png image
+    fn save(&self, name: &str) -> Result<(), std::io::Error> {
+        let ref mut w = BufWriter::new(File::create(Path::new(name))?);
+        let mut encoder = png::Encoder::new(w, self.1 as u32, self.1 as u32);
+        encoder
+            .set(png::ColorType::Grayscale)
+            .set(png::BitDepth::Eight);
+        let mut writer = encoder.write_header()?;
+
+        let data: Vec<u8> = self
+            .0
+            .iter()
+            .flat_map(|row| {
+                row.iter().map(|spin| match spin {
+                    Spin::Up => 0u8,
+                    Spin::Down => 255u8,
+                })
+            })
+            .collect();
+
+        writer.write_image_data(&data).unwrap();
+        Ok(())
+    }
+}
+
+#[derive(StructOpt)]
+#[structopt(name = "ising")]
+/// simulate the 2D Ising model using a Mante Carlo simulation of the Metropolis algorithm
+struct Opt {
+    /// the temperature
+    #[structopt(short = "T", long = "temp", default_value = "2.5")]
+    temp: f64,
+
+    /// the grid size
+    #[structopt(short = "s", long = "size", default_value = "10")]
+    size: usize,
+
+    /// the number of times to run the simulation per dipole
+    #[structopt(short = "i", long = "iterations", default_value = "100")]
+    iters: usize,
+
+    /// print all of the in-between states
+    #[structopt(short = "v", long = "verbose")]
+    verbose: bool,
+
+    /// save as a png image
+    #[structopt(short = "p", long = "png")]
+    png: bool,
+
+    /// give a basename for the png file(s)
+    #[structopt(short = "b", long = "base", default_value = "ising-2D")]
+    base: String,
 }
