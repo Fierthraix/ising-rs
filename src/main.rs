@@ -25,7 +25,7 @@ fn main() {
     save!(matrix, opt, 0);
 
     // Run the simulation about `iters` times per dipole (0 -> iters * size^2)
-    for i in 1..opt.iters * opt.size.pow(2) {
+    for iter in 1..opt.iters * opt.size.pow(2) {
         // Select a random row and column
         let i = rng.gen_range(0, opt.size);
         let j = rng.gen_range(0, opt.size);
@@ -41,8 +41,8 @@ fn main() {
             }
         }
         // Print every iteration if the user asks
-        if opt.verbose {
-            save!(matrix, opt, i);
+        if opt.verbose && iter % opt.size.pow(2) == 0 {
+            save!(matrix, opt, iter);
         }
     }
     save!(matrix, opt, opt.iters * opt.size.pow(2));
