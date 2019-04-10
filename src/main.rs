@@ -14,6 +14,20 @@ macro_rules! save {
         } else {
             println!("{:?}", $m);
         }
+        // Print the magnetization percent
+        if $opt.mag {
+            let mag: usize =
+                $m.0.iter()
+                    .flat_map(|row| {
+                        row.iter().map(|spin| match spin {
+                            Spin::Up => 1,
+                            Spin::Down => 0,
+                        })
+                    })
+                    .sum();
+            let mag = mag as f64 / $opt.size.pow(2) as f64;
+            println!("Up Spin: {}%, Down Spin: {}%", mag, 1. - mag);
+        }
     };
 }
 
@@ -199,4 +213,8 @@ struct Opt {
     /// give a basename for the png file(s)
     #[structopt(short = "b", long = "base", default_value = "ising-2D")]
     base: String,
+
+    /// print the magnetization for every printed run
+    #[structopt(short = "m", long = "mag")]
+    mag: bool,
 }
