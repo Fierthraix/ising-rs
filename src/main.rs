@@ -59,10 +59,19 @@ enum Spin {
 }
 
 impl Spin {
+    /// Flip the spin
     fn flip(&mut self) {
         match self {
             Spin::Up => *self = Spin::Down,
             Spin::Down => *self = Spin::Up,
+        }
+    }
+
+    /// Convert to floating point value
+    fn to_f64(&self) -> f64 {
+        match self {
+            Spin::Up => 1.0,
+            Spin::Down => -1.0,
         }
     }
 }
@@ -75,16 +84,6 @@ impl std::fmt::Debug for Spin {
         };
         write!(f, "{}", c)
     }
-}
-
-// Used to convert spins to numbers
-macro_rules! spin {
-    ($spin:expr) => {
-        match $spin {
-            Spin::Up => 1.0,
-            Spin::Down => -1.0,
-        }
-    };
 }
 
 struct Matrix<T>(Vec<Vec<T>>, usize);
@@ -126,27 +125,27 @@ impl Matrix<Spin> {
         // All the if statements handle boundary conditions,
         // the branch predictor should speed this up
         let top = if i == 0 {
-            spin!(self.0[size - 1][j])
+            self.0[size - 1][j].to_f64()
         } else {
-            spin!(self.0[i - 1][j])
+            self.0[i - 1][j].to_f64()
         };
         let bot = if i == size - 1 {
-            spin!(self.0[0][j])
+            self.0[0][j].to_f64()
         } else {
-            spin!(self.0[i + 1][j])
+            self.0[i + 1][j].to_f64()
         };
         let left = if j == 0 {
-            spin!(self.0[0][size - 1])
+            self.0[0][size - 1].to_f64()
         } else {
-            spin!(self.0[i][j - 1])
+            self.0[i][j - 1].to_f64()
         };
         let right = if j == size - 1 {
-            spin!(self.0[i][0])
+            self.0[i][0].to_f64()
         } else {
-            spin!(self.0[i][j + 1])
+            self.0[i][j + 1].to_f64()
         };
 
-        2. * spin!(self.0[i][j]) * (top + bot + left + right)
+        2. * self.0[i][j].to_f64() * (top + bot + left + right)
     }
     /// Save the matrix as a png image
     fn save(&self, name: &str) -> Result<(), std::io::Error> {
