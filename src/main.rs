@@ -1,4 +1,4 @@
-use rand::Rng;
+use rand::{Rng, rngs::ThreadRng};
 use structopt::StructOpt;
 
 use std::fs::File;
@@ -13,7 +13,7 @@ macro_rules! save {
         } else {
             println!("{:?}", $m);
         }
-        // Print the magnetization percent
+        // Print the magnetization percent.
         if $opt.mag {
             let mag: usize =
                 $m.0.iter()
@@ -33,32 +33,19 @@ macro_rules! save {
 fn main() {
     let opt = Opt::from_args();
     let mut rng = rand::thread_rng();
-    let mut matrix = Matrix::<Spin>::initialize(opt.size);
+    let mut matrix = Matrix::<Spin>::initialize(opt.size, &mut rng);
 
     if opt.verbose >= 1 {
         save!(matrix, opt, 0);
     }
 
-    // Run the simulation about `iters` times per dipole (0 -> iters * size^2)
+    // Run the simulation about `iters` times per dipole (0 -> iters * size^2).
     for iter in 1..opt.iters * opt.size.pow(2) {
-        // Select a random row and column
-        let i = rng.gen_range(0..opt.size);
-        let j = rng.gen_range(0..opt.size);
+        // Select a random row and column.
+        matrix.ising_step(opt.temp, &mut rng);
 
-        let energy_diff = matrix.delta_u(i, j);
-        // If flipping reduces energy then do it
-        if energy_diff <= 0. {
-            matrix.0[i][j].flip()
-        } else {
-            // Use Bolztmann factor to give probability of flipping
-            if rng.gen::<f64>() < (-energy_diff / opt.temp).exp() {
-                matrix.0[i][j].flip()
-            }
-        }
-        // Print every iteration if the user asks
-        if opt.verbose == 1 && iter % opt.size.pow(2) == 0 {
-            save!(matrix, opt, iter);
-        } else if opt.verbose >= 2 {
+        // Print every iteration if the user asks.
+        if opt.verbose >= 1 && iter % opt.size.pow(2) == 0 {
             save!(matrix, opt, iter);
         }
     }
@@ -72,7 +59,7 @@ enum Spin {
 }
 
 impl Spin {
-    /// Flip the spin
+    /// Flip the spin.
     fn flip(&mut self) {
         match self {
             Spin::Up => *self = Spin::Down,
@@ -80,7 +67,7 @@ impl Spin {
         }
     }
 
-    /// Convert to floating point value
+    /// Convert to floating point value.
     fn as_f64(&self) -> f64 {
         match self {
             Spin::Up => 1.0,
@@ -114,10 +101,8 @@ impl<T: std::fmt::Debug> std::fmt::Debug for Matrix<T> {
 }
 
 impl Matrix<Spin> {
-    /// Generate a random spin square grid
-    fn initialize(size: usize) -> Self {
-        let mut rng = rand::thread_rng();
-
+    /// Generate a random spin square grid.
+    fn initialize(size: usize, rng: &mut ThreadRng) -> Self {
         let mut matrix: Matrix<Spin> = Matrix(vec![vec![]; size], size);
 
         for row in matrix.0.iter_mut() {
@@ -132,7 +117,23 @@ impl Matrix<Spin> {
 
         matrix
     }
-    /// Calculate the energy delta using wrapping grid math
+    /// Decide whether or not to flip a particle.
+    fn ising_step(&mut self, temp: f64, rng: &mut ThreadRng) {
+        let i = rng.gen_range(0..self.1);
+        let j = rng.gen_range(0..self.1);
+
+        let energy_diff = self.delta_u(i, j);
+        // If flipping reduces energy then do it
+        if energy_diff <= 0. {
+            self.0[i][j].flip()
+        } else {
+            // Use Bolztmann factor to give probability of flipping
+            if rng.gen::<f64>() < (-energy_diff / temp).exp() {
+                self.0[i][j].flip()
+            }
+        }
+    }
+    /// Calculate the energy delta using wrapping grid math.
     fn delta_u(&self, i: usize, j: usize) -> f64 {
         let size = self.1;
         // All the if statements handle boundary conditions,
@@ -160,7 +161,7 @@ impl Matrix<Spin> {
 
         2. * self.0[i][j].as_f64() * (top + bot + left + right)
     }
-    /// Save the matrix as a png image
+    /// Save the matrix as a png image.
     fn save(&self, name: &str) -> Result<(), std::io::Error> {
         #[allow(clippy::toplevel_ref_arg)]
         let ref mut w = BufWriter::new(File::create(Path::new(name))?);
