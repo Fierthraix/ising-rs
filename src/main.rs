@@ -82,7 +82,7 @@ impl Spin {
     }
 
     /// Convert to floating point value
-    fn to_f64(&self) -> f64 {
+    fn as_f64(&self) -> f64 {
         match self {
             Spin::Up => 1.0,
             Spin::Down => -1.0,
@@ -139,30 +139,31 @@ impl Matrix<Spin> {
         // All the if statements handle boundary conditions,
         // the branch predictor should speed this up
         let top = if i == 0 {
-            self.0[size - 1][j].to_f64()
+            self.0[size - 1][j].as_f64()
         } else {
-            self.0[i - 1][j].to_f64()
+            self.0[i - 1][j].as_f64()
         };
         let bot = if i == size - 1 {
-            self.0[0][j].to_f64()
+            self.0[0][j].as_f64()
         } else {
-            self.0[i + 1][j].to_f64()
+            self.0[i + 1][j].as_f64()
         };
         let left = if j == 0 {
-            self.0[0][size - 1].to_f64()
+            self.0[0][size - 1].as_f64()
         } else {
-            self.0[i][j - 1].to_f64()
+            self.0[i][j - 1].as_f64()
         };
         let right = if j == size - 1 {
-            self.0[i][0].to_f64()
+            self.0[i][0].as_f64()
         } else {
-            self.0[i][j + 1].to_f64()
+            self.0[i][j + 1].as_f64()
         };
 
-        2. * self.0[i][j].to_f64() * (top + bot + left + right)
+        2. * self.0[i][j].as_f64() * (top + bot + left + right)
     }
     /// Save the matrix as a png image
     fn save(&self, name: &str) -> Result<(), std::io::Error> {
+        #[allow(clippy::toplevel_ref_arg)]
         let ref mut w = BufWriter::new(File::create(Path::new(name))?);
         let mut encoder = png::Encoder::new(w, self.1 as u32, self.1 as u32);
         encoder
@@ -181,7 +182,7 @@ impl Matrix<Spin> {
             })
             .collect();
 
-        writer.write_image_data(&data).unwrap();
+        writer.write_image_data(&data)?;
         Ok(())
     }
 }
