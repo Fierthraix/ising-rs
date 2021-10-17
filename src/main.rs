@@ -1,4 +1,3 @@
-use png::HasParameters;
 use rand::Rng;
 use structopt::StructOpt;
 
@@ -43,8 +42,8 @@ fn main() {
     // Run the simulation about `iters` times per dipole (0 -> iters * size^2)
     for iter in 1..opt.iters * opt.size.pow(2) {
         // Select a random row and column
-        let i = rng.gen_range(0, opt.size);
-        let j = rng.gen_range(0, opt.size);
+        let i = rng.gen_range(0..opt.size);
+        let j = rng.gen_range(0..opt.size);
 
         let energy_diff = matrix.delta_u(i, j);
         // If flipping reduces energy then do it
@@ -166,9 +165,8 @@ impl Matrix<Spin> {
         #[allow(clippy::toplevel_ref_arg)]
         let ref mut w = BufWriter::new(File::create(Path::new(name))?);
         let mut encoder = png::Encoder::new(w, self.1 as u32, self.1 as u32);
-        encoder
-            .set(png::ColorType::Grayscale)
-            .set(png::BitDepth::Eight);
+        encoder.set_color(png::ColorType::Grayscale);
+        encoder.set_depth(png::BitDepth::Eight);
         let mut writer = encoder.write_header()?;
 
         let data: Vec<u8> = self
