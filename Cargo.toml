@@ -1,11 +1,11 @@
 [package]
 name = "ising"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Lucas Rooyakkers <lucas.rooyakkers@protonmail.com>"]
 edition = "2018"
 
 [dependencies]
-rand = "0.8.4"
-lazy_static = "1.4"
-structopt = "0.3.23"
-png = "0.17.2"
+rand = "0.8.5"
+lazy_static = "1.5"
+structopt = "0.3.26"
+png = "0.17.13"
