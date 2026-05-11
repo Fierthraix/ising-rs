@@ -3,6 +3,8 @@ name = "ising"
 version = "0.1.2"
 authors = ["Lucas Rooyakkers <lucas.rooyakkers@protonmail.com>"]
 edition = "2024"
+description = "Simulate the 2D Ising model with the Metropolis algorithm."
+license = "GPL-3.0-or-later"
 repository = "https://github.com/Fierthraix/ising-rs"
 
 [dependencies]
