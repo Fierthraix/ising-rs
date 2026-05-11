@@ -1,4 +1,8 @@
 # ising-rs
+
+[![CI](https://github.com/Fierthraix/ising-rs/actions/workflows/ci.yml/badge.svg)](https://github.com/Fierthraix/ising-rs/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/license-GPL--3.0--or--later-blue.svg)](Cargo.toml)
+
 Simple simulation of the 2D Ising model using a Monte Carlo simulation of the Metropolis algorithm
 
 ## Installation
