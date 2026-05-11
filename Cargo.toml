@@ -1,11 +1,12 @@
 [package]
 name = "ising"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Lucas Rooyakkers <lucas.rooyakkers@protonmail.com>"]
-edition = "2018"
+edition = "2024"
+repository = "https://github.com/Fierthraix/ising-rs"
 
 [dependencies]
-rand = "0.8.5"
+rand = "0.10.1"
 lazy_static = "1.5"
 structopt = "0.3.26"
-png = "0.17.13"
+png = "0.18.1"

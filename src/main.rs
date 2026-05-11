@@ -1,4 +1,4 @@
-use rand::{Rng, rngs::ThreadRng};
+use rand::{RngExt, rngs::ThreadRng};
 use structopt::StructOpt;
 
 use std::fs::File;
@@ -32,7 +32,7 @@ macro_rules! save {
 
 fn main() {
     let opt = Opt::from_args();
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let mut matrix = Matrix::<Spin>::initialize(opt.size, &mut rng);
 
     if opt.verbose >= 1 {
@@ -107,7 +107,7 @@ impl Matrix<Spin> {
 
         for row in matrix.0.iter_mut() {
             for _ in 0..size {
-                row.push(if rng.gen::<bool>() {
+                row.push(if rng.random::<bool>() {
                     Spin::Up
                 } else {
                     Spin::Down
@@ -119,8 +119,8 @@ impl Matrix<Spin> {
     }
     /// Decide whether or not to flip a particle.
     fn ising_step(&mut self, temp: f64, rng: &mut ThreadRng) {
-        let i = rng.gen_range(0..self.1);
-        let j = rng.gen_range(0..self.1);
+        let i = rng.random_range(0..self.1);
+        let j = rng.random_range(0..self.1);
 
         let energy_diff = self.delta_u(i, j);
         // If flipping reduces energy then do it
@@ -128,7 +128,7 @@ impl Matrix<Spin> {
             self.0[i][j].flip()
         } else {
             // Use Bolztmann factor to give probability of flipping
-            if rng.gen::<f64>() < (-energy_diff / temp).exp() {
+            if rng.random::<f64>() < (-energy_diff / temp).exp() {
                 self.0[i][j].flip()
             }
         }
